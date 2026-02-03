@@ -265,7 +265,6 @@ else:
         m1,m2,m3,m4 = st.columns(4)
         m1.metric("Fiyat", f"{son:.2f}", f"%{yuzde:.2f}")
         
-        # AÇIKLAMALI METRİKLER (TOOLTIP EKLENDİ)
         m2.metric("AI Sinyal", ml_y, f"%{ml_g:.0f} Güven", help="Random Forest (Makine Öğrenmesi) modeli geçmiş 2 yıllık veriyi tarar. Eğer Güven %50'den yüksekse yön tahmini yapar.")
         m3.metric("RSI", f"{df['RSI'].iloc[-1]:.0f}", sinyal, help="RSI (Göreceli Güç Endeksi):\n• 30'un altı: Hisse çok ucuzladı (Alım fırsatı olabilir).\n• 70'in üstü: Hisse çok pahalandı (Satış gelebilir).")
         
@@ -290,7 +289,6 @@ else:
         fig.update_layout(height=450, template="plotly_dark", margin=dict(t=30,b=0), yaxis_autorange=True)
         st.plotly_chart(fig, use_container_width=True)
         
-        # SARI VE GRİ ÇİZGİ AÇIKLAMASI
         with st.expander("ℹ️ Grafikteki Çizgiler Ne Anlama Geliyor?"):
             st.markdown("""
             * **Sarı Çizgi (AI Trend):** Fiyatın matematiksel rotası.
@@ -299,15 +297,15 @@ else:
             """)
 
         with st.expander("💰 İşlem Yap"):
-            ad = st.number_input("Adet", 1.0); mal = st.number_input("Maliyet", son)
+            ad = st.number_input("Adet", 100.0); mal = st.number_input("Maliyet", son)
             if st.button("Kaydet"):
                 conn=baglanti_kur()
                 conn.execute("DELETE FROM portfoy WHERE username=? AND sembol=?",(user,secilen))
                 conn.execute("INSERT INTO portfoy VALUES (?,?,?,?)",(user,secilen,ad,mal))
                 conn.commit(); conn.close(); st.success("OK"); time.sleep(0.5); st.rerun()
 
-        # SEKME SİSTEMİ
-        tab1, tab2, tab3, tab4 = st.tabs(["🧬 AI & Mevsimsellik", "📊 Risk Analizi", "📋 Türkçe Veri", "🔔 Alarm"])
+        # --- YENİ EKLENEN KIYASLAMA SEKMESİ (tab5) ---
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧬 AI & Mevsimsellik", "📊 Risk Analizi", "📋 Türkçe Veri", "🔔 Alarm", "🆚 Kıyasla"])
 
         with tab1: 
             c_ai1, c_ai2 = st.columns(2)
@@ -342,6 +340,37 @@ else:
             if st.button("Kur"):
                 if son <= hf: mail_gonder(mail, secilen, son); st.success("Mail atıldı!")
                 else: st.warning("Henüz düşmedi.")
-                
-    else: st.error("Veri alınamadı.")
+        
+        # --- KIYASLAMA MODÜLÜ ---
+        with tab5:
+            st.subheader(f"{secilen} vs ?")
+            st.info("Bu özellik, iki farklı varlığı **'Yüzdesel Getiri'** olarak karşılaştırır. Böylece fiyatları farklı olsa bile hangisinin daha çok kazandırdığını görebilirsin.")
+            
+            karsit = st.text_input("Kıyaslanacak Sembol (Örn: USDTRY=X, THYAO.IS)", "USDTRY=X")
+            
+            if karsit:
+                df2 = veri_getir(karsit, p_map[zaman])
+                if not df2.empty:
+                    # Tarihleri eşleştir
+                    df_comp = pd.merge(df[['Date','Close']], df2[['Date','Close']], on='Date', suffixes=('_1', '_2')).dropna()
+                    
+                    if not df_comp.empty:
+                        # Normalize et (Yüzdesel Getiriye Çevir: Başlangıç = 0)
+                        df_comp['Norm_1'] = ((df_comp['Close_1'] / df_comp['Close_1'].iloc[0]) - 1) * 100
+                        df_comp['Norm_2'] = ((df_comp['Close_2'] / df_comp['Close_2'].iloc[0]) - 1) * 100
+                        
+                        # Korelasyon Hesapla
+                        corr = df_comp['Close_1'].corr(df_comp['Close_2'])
+                        
+                        st.metric("Korelasyon (Benzerlik)", f"{corr:.2f}", help="1.00: Birebir aynı hareket ediyorlar.\n-1.00: Tamamen zıt hareket ediyorlar.\n0.00: Alakasızlar.")
+                        
+                        fig_c = go.Figure()
+                        fig_c.add_trace(go.Scatter(x=df_comp['Date'], y=df_comp['Norm_1'], mode='lines', name=secilen, line=dict(color='#00ff00', width=2)))
+                        fig_c.add_trace(go.Scatter(x=df_comp['Date'], y=df_comp['Norm_2'], mode='lines', name=karsit, line=dict(color='#0000ff', width=2)))
+                        
+                        fig_c.update_layout(height=400, template="plotly_dark", title="Getiri Karşılaştırması (%)", yaxis_title="Kazanç Yüzdesi (%)")
+                        st.plotly_chart(fig_c, use_container_width=True)
+                    else: st.warning("Ortak tarih aralığı bulunamadı.")
+                else: st.error("Kıyaslanacak sembol bulunamadı.")
 
+    else: st.error("Veri alınamadı.")
