@@ -13,13 +13,13 @@ from sklearn.ensemble import RandomForestClassifier
 
 # --- 1. AYARLAR ---
 st.set_page_config(
-    page_title="Borsa Pro Gold",
+    page_title="Borsa Pro",
     page_icon="💎",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- CSS TASARIM ---
+# --- CSS TASARIM (Midas UI - BOZULMADI) ---
 st.markdown("""
 <style>
     .stApp {background-color: #0e1117;}
@@ -62,7 +62,7 @@ def mail_gonder(kime, sembol, fiyat):
         server.quit(); return True
     except: return False
 
-# --- 4. DATA VE ANALİZ MOTORU (DÜZELTİLDİ) ---
+# --- 4. DATA VE ANALİZ MOTORU (DÜZELTİLMİŞ HALİ) ---
 
 @st.cache_data(ttl=60)
 def veri_getir(sembol, periyot="1mo"):
@@ -71,47 +71,59 @@ def veri_getir(sembol, periyot="1mo"):
         if periyot == "1d": aralik = "5m"
         elif periyot == "5d": aralik = "60m"
         
-        # ALTIN VE GÜMÜŞ İÇİN ÖZEL HESAPLAMA (MUM GRAFİĞİ DÜZELSİN DİYE)
+        # --- ALTIN/GÜMÜŞ ÖZEL HESAPLAMA (SAAT DİLİMİ HATASI GİDERİLDİ) ---
         if "ALTIN" in sembol or "GUMUS" in sembol:
             ticker = "GC=F" if "ALTIN" in sembol else "SI=F"
             
-            # Sadece Close değil, tüm verileri çekiyoruz (Open, High, Low)
-            ons_df = yf.Ticker(ticker).history(period=periyot, interval=aralik)[['Open', 'High', 'Low', 'Close']]
-            dolar_df = yf.Ticker("USDTRY=X").history(period=periyot, interval=aralik)['Close']
+            # 1. Verileri Çek
+            ons = yf.Ticker(ticker).history(period=periyot, interval=aralik)
+            dolar = yf.Ticker("USDTRY=X").history(period=periyot, interval=aralik)
             
-            # Verileri birleştir
-            df = pd.concat([ons_df, dolar_df], axis=1).dropna()
+            if ons.empty or dolar.empty: return pd.DataFrame()
+
+            # 2. Saat Dilimlerini Temizle (Çakışmayı Önler)
+            ons.index = ons.index.tz_localize(None)
+            dolar.index = dolar.index.tz_localize(None)
+            
+            # 3. Sütunları Seç ve Birleştir
+            ons = ons[['Open', 'High', 'Low', 'Close']]
+            dolar_close = dolar['Close']
+            
+            # axis=1 yan yana koyar. ffill/bfill boşlukları doldurur.
+            df = pd.concat([ons, dolar_close], axis=1)
             df.columns = ['Ons_Open', 'Ons_High', 'Ons_Low', 'Ons_Close', 'Dolar']
-            
-            # Hepsini Gram TL'ye çevir
+            df = df.ffill().bfill().dropna()
+
+            # 4. Gram TL Hesapla (Mum Grafiği İçin Tüm Veriler)
             for col in ['Open', 'High', 'Low', 'Close']:
                 df[col] = (df[f'Ons_{col}'] * df['Dolar']) / 31.1035
-                
+            
+            # Temizlik
+            df = df[['Open', 'High', 'Low', 'Close']]
+            df['Volume'] = 0
             df.reset_index(inplace=True)
             col = 'Date' if 'Date' in df.columns else 'Datetime'
             df = df.rename(columns={col: 'Date'})
-            df['Volume'] = 0 # Hacim verisi hesaplamalı olduğu için 0 geçiyoruz
-            
+
+        # --- NORMAL HİSSELER ---
         else:
-            # NORMAL HİSSELER
             hisse = yf.Ticker(sembol)
             df = hisse.history(period=periyot, interval=aralik)
             df.reset_index(inplace=True)
-        
-        # Tarih formatı düzeltme
-        if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
-        elif 'Datetime' in df.columns: df['Date'] = pd.to_datetime(df['Datetime']).dt.tz_localize(None)
+            if 'Date' in df.columns: df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
+            elif 'Datetime' in df.columns: df['Date'] = pd.to_datetime(df['Datetime']).dt.tz_localize(None)
         
         return df
+
     except: return pd.DataFrame()
 
 def teknik_analiz(df):
-    if len(df) < 15: return df, "Yetersiz Veri"
+    if len(df) < 15: return df, "Veri Yetersiz"
     
     # Hareketli Ortalamalar
     df['SMA_20'] = df['Close'].rolling(20).mean()
     
-    # Bollinger Bantları (GERİ GELDİ)
+    # Bollinger Bantları
     std = df['Close'].rolling(20).std()
     df['Bollinger_Upper'] = df['SMA_20'] + (std * 2)
     df['Bollinger_Lower'] = df['SMA_20'] - (std * 2)
@@ -129,7 +141,7 @@ def teknik_analiz(df):
         elif df['RSI'].iloc[-1] > 70: sinyal = "SAT 🔴"
     return df, sinyal
 
-# POLİNOM REGRESYON (SARI TAHMİN ÇİZGİSİ)
+# POLİNOM REGRESYON
 def gelismis_tahmin(df):
     try:
         df_temp = df.dropna(subset=['Close']).copy()
@@ -152,29 +164,24 @@ def gelismis_tahmin(df):
         return pd.DataFrame({'Date': gelecek, 'Tahmin': y_pred, 'Ust': y_pred + std_hata, 'Alt': y_pred - std_hata})
     except: return None
 
-# RANDOM FOREST (DÜZELTİLDİ - ALTIN/GÜMÜŞ İÇİN ONS VERİSİNİ KULLANIR)
+# RANDOM FOREST (AI SİNYAL)
 def ml_sinyal_uret(sembol):
     try:
-        # Altın/Gümüş ise ONS verisiyle eğit, Hisse ise kendi verisiyle
         if "ALTIN" in sembol: ticker = "GC=F"
         elif "GUMUS" in sembol: ticker = "SI=F"
         else: ticker = sembol
             
-        data = yf.Ticker(ticker).history(period="2y") # 2 Yıllık veri çek
-        
+        data = yf.Ticker(ticker).history(period="2y")
         if len(data) < 50: return "Veri Az", 0
         
         data['Getiri'] = data['Close'].pct_change()
         data['SMA_10'] = data['Close'].rolling(10).mean()
         data['SMA_50'] = data['Close'].rolling(50).mean()
-        
-        # Target: Yarın yükselecek mi?
         data['Target'] = np.where(data['Close'].shift(-1) > data['Close'], 1, 0)
         data = data.dropna()
         
-        features = ['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_10', 'SMA_50']
-        # Volume bazen 0 olabilir (Altın hesaplamasında), sorun çıkarmaması için kontrol
-        if "ALTIN" in sembol or "GUMUS" in sembol: features = ['Open', 'High', 'Low', 'Close', 'SMA_10', 'SMA_50']
+        features = ['Open', 'High', 'Low', 'Close', 'SMA_10', 'SMA_50']
+        if "Volume" in data.columns and data['Volume'].sum() > 0: features.append('Volume')
             
         X = data[features]
         y = data['Target']
@@ -184,10 +191,8 @@ def ml_sinyal_uret(sembol):
         
         prob = model.predict_proba(X.iloc[[-1]])[0][1]
         
-        if prob >= 0.5:
-            return "YUKSELIS 🚀", prob * 100
-        else:
-            return "DUSUS 🔻", (1 - prob) * 100
+        if prob >= 0.5: return "YUKSELIS 🚀", prob * 100
+        else: return "DUSUS 🔻", (1 - prob) * 100
             
     except: return "Hesaplanamadı", 0
 
@@ -276,8 +281,8 @@ else:
     
     if not df.empty and len(df)>1:
         df, sinyal = teknik_analiz(df)
-        ai_df = gelismis_tahmin(df) # Regresyon
-        ml_y, ml_g = ml_sinyal_uret(secilen) # Random Forest
+        ai_df = gelismis_tahmin(df) 
+        ml_y, ml_g = ml_sinyal_uret(secilen)
         
         son = df.iloc[-1]['Close']; fark = son - df.iloc[0]['Close']; yuzde = (fark/df.iloc[0]['Close'])*100
         
@@ -285,7 +290,7 @@ else:
         m1.metric("Fiyat", f"{son:.2f}", f"%{yuzde:.2f}")
         m2.metric("AI Sinyal (Random Forest)", ml_y, f"%{ml_g:.0f} Güven")
         m3.metric("RSI", f"{df['RSI'].iloc[-1]:.0f}", sinyal)
-        if 'Tahmin' in str(ai_df):
+        if ai_df is not None and 'Tahmin' in ai_df.columns:
             tyon = "Yükseliş Trendi" if ai_df['Tahmin'].iloc[-1] > son else "Düşüş Trendi"
             m4.metric("Regresyon Trendi", tyon)
         else:
@@ -296,7 +301,7 @@ else:
         renk = '#00ff00' if fark>=0 else '#ff0000'
         
         if gr_tip=="Mum":
-            # Artık Altın için de dolu dolu mumlar var!
+            # Gram Altın artık dolu mumlarla görünecek
             fig.add_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat'))
         else:
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], mode='lines', line=dict(color=renk, width=4), name='Fiyat'))
