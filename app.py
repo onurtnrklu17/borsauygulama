@@ -299,7 +299,7 @@ else:
             """)
 
         with st.expander("💰 İşlem Yap"):
-            ad = st.number_input("Adet", 100.0); mal = st.number_input("Maliyet", son)
+            ad = st.number_input("Adet", 1.0); mal = st.number_input("Maliyet", son)
             if st.button("Kaydet"):
                 conn=baglanti_kur()
                 conn.execute("DELETE FROM portfoy WHERE username=? AND sembol=?",(user,secilen))
@@ -344,3 +344,4 @@ else:
                 else: st.warning("Henüz düşmedi.")
                 
     else: st.error("Veri alınamadı.")
+
