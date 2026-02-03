@@ -5,7 +5,7 @@ import yfinance as yf
 import smtplib
 from email.mime.text import MIMEText
 import plotly.graph_objects as go
-import plotly.express as px  # Histogram ve Bar chart için gerekli
+import plotly.express as px
 import numpy as np
 import datetime
 import time
@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CSS TASARIM (MIDAS UI) ---
+# --- CSS TASARIM ---
 st.markdown("""
 <style>
     .stApp {background-color: #0e1117;}
@@ -64,7 +64,6 @@ def mail_gonder(kime, sembol, fiyat):
     except: return False
 
 # --- 4. DATA VE ANALİZ MOTORU ---
-
 @st.cache_data(ttl=60)
 def veri_getir(sembol, periyot="1mo"):
     try:
@@ -72,7 +71,6 @@ def veri_getir(sembol, periyot="1mo"):
         if periyot == "1d": aralik = "5m"
         elif periyot == "5d": aralik = "60m"
         
-        # ALTIN/GÜMÜŞ FIX (DÜZELTİLMİŞ HALİ)
         if "ALTIN" in sembol or "GUMUS" in sembol:
             ticker = "GC=F" if "ALTIN" in sembol else "SI=F"
             ons = yf.Ticker(ticker).history(period=periyot, interval=aralik)
@@ -126,7 +124,6 @@ def teknik_analiz(df):
         elif df['RSI'].iloc[-1] > 70: sinyal = "SAT 🔴"
     return df, sinyal
 
-# REGRESYON
 def gelismis_tahmin(df):
     try:
         df_temp = df.dropna(subset=['Close']).copy()
@@ -142,7 +139,6 @@ def gelismis_tahmin(df):
         return pd.DataFrame({'Date': gelecek, 'Tahmin': y_pred, 'Ust': y_pred + std_hata, 'Alt': y_pred - std_hata})
     except: return None
 
-# MEVSİMSELLİK (GERİ GELDİ)
 def mevsimsellik_analizi(df):
     try:
         df_temp = df.copy()
@@ -151,13 +147,11 @@ def mevsimsellik_analizi(df):
         df_temp['Gun'] = df_temp['Gun'].map(tr_gun)
         df_temp['Getiri'] = df_temp['Close'].pct_change() * 100
         mevsim = df_temp.groupby('Gun')['Getiri'].mean()
-        # Sıralama
         sirali = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma']
         mevsim = mevsim.reindex(sirali)
         return mevsim
     except: return pd.Series()
 
-# RANDOM FOREST
 def ml_sinyal_uret(sembol):
     try:
         if "ALTIN" in sembol: ticker = "GC=F"
@@ -216,7 +210,6 @@ if not st.session_state['login_status']:
 else:
     user = st.session_state['username']
     
-    # SIDEBAR
     st.sidebar.title(f"👤 {user}")
     if st.sidebar.button("Çıkış"): st.session_state['login_status']=False; st.rerun()
     st.sidebar.divider()
@@ -271,28 +264,40 @@ else:
         
         m1,m2,m3,m4 = st.columns(4)
         m1.metric("Fiyat", f"{son:.2f}", f"%{yuzde:.2f}")
-        m2.metric("AI Sinyal", ml_y, f"%{ml_g:.0f} Güven")
-        m3.metric("RSI", f"{df['RSI'].iloc[-1]:.0f}", sinyal)
+        
+        # AÇIKLAMALI METRİKLER (TOOLTIP EKLENDİ)
+        m2.metric("AI Sinyal", ml_y, f"%{ml_g:.0f} Güven", help="Random Forest (Makine Öğrenmesi) modeli geçmiş 2 yıllık veriyi tarar. Eğer Güven %50'den yüksekse yön tahmini yapar.")
+        m3.metric("RSI", f"{df['RSI'].iloc[-1]:.0f}", sinyal, help="RSI (Göreceli Güç Endeksi):\n• 30'un altı: Hisse çok ucuzladı (Alım fırsatı olabilir).\n• 70'in üstü: Hisse çok pahalandı (Satış gelebilir).")
+        
         if ai_df is not None and 'Tahmin' in ai_df.columns:
             tyon = "Yükseliş" if ai_df['Tahmin'].iloc[-1] > son else "Düşüş"
-            m4.metric("Trend", tyon)
+            m4.metric("Trend", tyon, help="Polinom Regresyon: Fiyatın genel eğilimini gösteren sarı çizgi. Gelecekteki olası rotayı çizer.")
         else: m4.metric("Trend", "--")
 
-        # GRAFİK
         fig = go.Figure()
         renk = '#00ff00' if fark>=0 else '#ff0000'
         if gr_tip=="Mum": fig.add_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Fiyat'))
         else: fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], mode='lines', line=dict(color=renk, width=4), name='Fiyat'))
+        
         if 'Bollinger_Upper' in df:
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Bollinger_Upper'], line=dict(color='gray', width=1), name='Üst Bant'))
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Bollinger_Lower'], fill='tonexty', fillcolor='rgba(255, 255, 255, 0.05)', line=dict(color='gray', width=1), name='Alt Bant'))
+        
         if ai_df is not None:
              fig.add_trace(go.Scatter(x=ai_df['Date'], y=ai_df['Tahmin'], line=dict(color='yellow', dash='dot', width=2), name='AI Trend'))
              fig.add_trace(go.Scatter(x=ai_df['Date'], y=ai_df['Alt'], fill='tonexty', fillcolor='rgba(255, 255, 0, 0.15)', line=dict(width=0), name='Güven Aralığı'))
+        
         fig.update_layout(height=450, template="plotly_dark", margin=dict(t=30,b=0), yaxis_autorange=True)
         st.plotly_chart(fig, use_container_width=True)
+        
+        # SARI VE GRİ ÇİZGİ AÇIKLAMASI
+        with st.expander("ℹ️ Grafikteki Çizgiler Ne Anlama Geliyor?"):
+            st.markdown("""
+            * **Sarı Çizgi (AI Trend):** Fiyatın matematiksel rotası.
+            * **Sarı Gölgeli Alan (Güven Aralığı):** Fiyatın %95 ihtimalle içinde kalması gereken tünel.
+            * **Gri Çizgiler (Bollinger):** Üst çizgiye değerse "Pahalı", alta değerse "Ucuz" demektir.
+            """)
 
-        # İŞLEM BUTONU
         with st.expander("💰 İşlem Yap"):
             ad = st.number_input("Adet", 100.0); mal = st.number_input("Maliyet", son)
             if st.button("Kaydet"):
@@ -301,43 +306,38 @@ else:
                 conn.execute("INSERT INTO portfoy VALUES (?,?,?,?)",(user,secilen,ad,mal))
                 conn.commit(); conn.close(); st.success("OK"); time.sleep(0.5); st.rerun()
 
-        # --- SEKME SİSTEMİ GERİ GELDİ ---
+        # SEKME SİSTEMİ
         tab1, tab2, tab3, tab4 = st.tabs(["🧬 AI & Mevsimsellik", "📊 Risk Analizi", "📋 Türkçe Veri", "🔔 Alarm"])
 
-        with tab1: # AI LAB
+        with tab1: 
             c_ai1, c_ai2 = st.columns(2)
             with c_ai1:
-                st.subheader("Mevsimsellik (Hangi Günler?)")
+                st.subheader("Mevsimsellik Analizi")
+                st.info("📊 **Bu Grafik Nedir?**\nHissenin geçmiş hareketlerine bakarak, haftanın hangi günlerinde yükselip hangi günlerinde düştüğünü gösterir.")
                 mevsim_data = mevsimsellik_analizi(df)
                 if not mevsim_data.empty:
-                    fig_s = px.bar(x=mevsim_data.index, y=mevsim_data.values, labels={'x':'Gün', 'y':'Ortalama Getiri %'}, color=mevsim_data.values, color_continuous_scale='RdYlGn')
+                    fig_s = px.bar(x=mevsim_data.index, y=mevsim_data.values, labels={'x':'Gün', 'y':'Getiri %'}, color=mevsim_data.values, color_continuous_scale='RdYlGn')
                     fig_s.update_layout(template="plotly_dark", height=300)
                     st.plotly_chart(fig_s, use_container_width=True)
             with c_ai2:
-                st.subheader("AI Detay")
-                st.info(f"Model: Random Forest\nTahmin: {ml_y}\nGüven: %{ml_g:.0f}\n\nBu model, son 2 yılın verilerini tarayarak karar verdi.")
+                st.subheader("AI Sinyal Detayı")
+                st.info(f"🤖 **Random Forest Nedir?**\nÇok sayıda karar ağacından oluşan bir yapay zekadır. Geçmiş veriyi analiz eder ve 'Al' veya 'Sat' kararı verir.\n\n**Şu anki Durum:**\nModel %{ml_g:.0f} ihtimalle **{ml_y}** bekliyor.")
 
-        with tab2: # HİSTOGRAM
-            st.subheader("Volatilite (Risk Dağılımı)")
+        with tab2: 
+            st.subheader("Histogram (Risk)")
+            st.info("📉 **Histogram Nedir?**\nÇubuklar sağa-sola çok yayılmışsa hisse **çok oynak (Riskli)** demektir. Ortada toplanmışsa **sakin** hareket ediyordur.")
             ret = df['Close'].pct_change().dropna()*100
             fig_h = go.Figure(data=[go.Histogram(x=ret, nbinsx=40, marker_color='#3b8ed0')])
             fig_h.update_layout(height=300, template="plotly_dark", title="Günlük Değişim Dağılımı")
             st.plotly_chart(fig_h, use_container_width=True)
 
-        with tab3: # TÜRKÇE TABLO
+        with tab3: 
             st.subheader("Geçmiş Veriler")
             tablo = df.copy()
-            # Sütunları Türkçeleştir
-            tablo = tablo.rename(columns={
-                'Date': 'Tarih', 'Open': 'Açılış', 'High': 'Yüksek', 
-                'Low': 'Düşük', 'Close': 'Kapanış', 'Volume': 'Hacim',
-                'SMA_20': 'Ortalama', 'RSI': 'RSI Gücü'
-            })
-            # Gerekli sütunları seç ve göster
-            gosterilecek = ['Tarih', 'Açılış', 'Yüksek', 'Düşük', 'Kapanış', 'RSI Gücü']
-            st.dataframe(tablo[gosterilecek].sort_values('Tarih', ascending=False), use_container_width=True, hide_index=True)
+            tablo = tablo.rename(columns={'Date': 'Tarih', 'Open': 'Açılış', 'High': 'Yüksek', 'Low': 'Düşük', 'Close': 'Kapanış', 'RSI': 'RSI Gücü'})
+            st.dataframe(tablo[['Tarih', 'Açılış', 'Yüksek', 'Düşük', 'Kapanış', 'RSI Gücü']].sort_values('Tarih', ascending=False), use_container_width=True, hide_index=True)
 
-        with tab4: # ALARM
+        with tab4: 
             hf = st.number_input("Hedef Fiyat", son*0.95); mail = st.text_input("Mail")
             if st.button("Kur"):
                 if son <= hf: mail_gonder(mail, secilen, son); st.success("Mail atıldı!")
