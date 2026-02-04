@@ -4,18 +4,18 @@ Bu proje, yatırımcıların hisse senedi, emtia (Altın/Gümüş) ve döviz kur
 
 🔗 **Canlı Demo:** [Uygulamayı Buradan Deneyin](https://borsauygulama-j6bscb7jfkuham8atucrjr.streamlit.app)
 
-## 🚀 Öne Çıkan Özellikler
+##  Öne Çıkan Özellikler
 
-* **📊 Gelişmiş Grafikler:** Plotly altyapısı ile interaktif mum ve çizgi grafikleri. Otomatik zoom ve odaklama özelliği.
-* **🤖 Yapay Zeka (AI) Desteği:** * **Random Forest:** Geçmiş 2 yıllık veriyi tarayarak fiyatın yönünü (Yükseliş/Düşüş) tahmin eder.
+* ** Gelişmiş Grafikler:** Plotly altyapısı ile interaktif mum ve çizgi grafikleri. Otomatik zoom ve odaklama özelliği.
+* ** Yapay Zeka (AI) Desteği:** * **Random Forest:** Geçmiş 2 yıllık veriyi tarayarak fiyatın yönünü (Yükseliş/Düşüş) tahmin eder.
     * **Polinom Regresyon:** Fiyatın matematiksel ana trendini ve güven aralıklarını çizer.
-* **🆚 Akıllı Kıyaslama:** Herhangi bir hisseyi Dolar, Euro, BIST100 veya portföydeki başka bir varlıkla "Yüzdesel Getiri" bazında karşılaştırır.
-* **🧬 Mevsimsellik Analizi:** Hissenin geçmişte haftanın hangi günlerinde kazandırdığını istatistiksel olarak sunar.
-* **🔔 Alarm Sistemi:** Belirlenen fiyat seviyelerine gelindiğinde kullanıcıya e-posta (SMTP) ile bildirim gönderir.
-* **💰 Portföy Yönetimi:** SQLite veritabanı ile kullanıcı bazlı portföy takibi ve kar/zarar hesabı.
-* **🛠️ Özel Algoritmalar:** Gram Altın ve Gümüş için Ons/Dolar paritesi üzerinden gerçek zamanlı mum grafiği oluşturma ve *Timezone* hatalarını gideren veri temizleme algoritmaları.
+* ** Akıllı Kıyaslama:** Herhangi bir hisseyi Dolar, Euro, BIST100 veya portföydeki başka bir varlıkla "Yüzdesel Getiri" bazında karşılaştırır.
+* ** Mevsimsellik Analizi:** Hissenin geçmişte haftanın hangi günlerinde kazandırdığını istatistiksel olarak sunar.
+* ** Alarm Sistemi:** Belirlenen fiyat seviyelerine gelindiğinde kullanıcıya e-posta (SMTP) ile bildirim gönderir.
+* ** Portföy Yönetimi:** SQLite veritabanı ile kullanıcı bazlı portföy takibi ve kar/zarar hesabı.
+* ** Özel Algoritmalar:** Gram Altın ve Gümüş için Ons/Dolar paritesi üzerinden gerçek zamanlı mum grafiği oluşturma ve *Timezone* hatalarını gideren veri temizleme algoritmaları.
 
-## 🛠️ Kullanılan Teknolojiler
+##  Kullanılan Teknolojiler
 
 * **Dil:** Python 3.10+
 * **Arayüz:** Streamlit
@@ -25,7 +25,7 @@ Bu proje, yatırımcıların hisse senedi, emtia (Altın/Gümüş) ve döviz kur
 * **Veri Kaynağı:** yfinance API
 * **Veritabanı:** SQLite3
 
-## 📦 Kurulum (Local)
+##  Kurulum (Local)
 
 Bu projeyi kendi bilgisayarınızda çalıştırmak için:
 
