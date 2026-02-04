@@ -12,7 +12,7 @@ Bu proje, yatırımcıların hisse senedi, emtia (Altın/Gümüş) ve döviz kur
 * ** Akıllı Kıyaslama:** Herhangi bir hisseyi Dolar, Euro, BIST100 veya portföydeki başka bir varlıkla "Yüzdesel Getiri" bazında karşılaştırır.
 * ** Mevsimsellik Analizi:** Hissenin geçmişte haftanın hangi günlerinde kazandırdığını istatistiksel olarak sunar.
 * ** Alarm Sistemi:** Belirlenen fiyat seviyelerine gelindiğinde kullanıcıya e-posta (SMTP) ile bildirim gönderir.
-* ** Portföy Yönetimi:** SQLite veritabanı ile kullanıcı bazlı portföy takibi ve kar/zarar hesabı.
+* ** Portföy Yönetimi:** Google Sheets API & Cloud Database Entegrasyonu: Kullanıcı verileri ve portföy takibi için NoSQL mantığıyla çalışan Google Sheets API bağlantısı kuruldu. Bu sayede sunucu (Streamlit Cloud) yeniden başlatılsa bile veri kaybı önlendi (Data Persistence).
 * ** Özel Algoritmalar:** Gram Altın ve Gümüş için Ons/Dolar paritesi üzerinden gerçek zamanlı mum grafiği oluşturma ve *Timezone* hatalarını gideren veri temizleme algoritmaları.
 
 ##  Kullanılan Teknolojiler
@@ -23,7 +23,7 @@ Bu proje, yatırımcıların hisse senedi, emtia (Altın/Gümüş) ve döviz kur
 * **Makine Öğrenmesi:** Scikit-Learn (Sklearn)
 * **Görselleştirme:** Plotly Express & Graph Objects
 * **Veri Kaynağı:** yfinance API
-* **Veritabanı:** SQLite3
+* **Veritabanı:** Google Sheets API (NoSQL Cloud Database)
 
 ##  Kurulum (Local)
 
