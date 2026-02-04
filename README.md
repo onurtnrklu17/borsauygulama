@@ -44,14 +44,17 @@ Bu projeyi kendi bilgisayarınızda çalıştırmak için:
 
 ## 📷 Ekran Görüntüleri
 
-## 📷 Ekran Görüntüleri
+### 1. Ana Analiz Ekranı ve Grafikler
+![Ana Ekran](Ekran%20görüntüsü%202026-02-04%20032515.png)
 
-![Ana Ekran Görünümü](Ekran görüntüsü 2026-02-04 032515.png)
+### 2. Koyu Mod Arayüzü ve Veri Panelleri
+![Koyu Mod](Ekran%20görüntüsü%202026-02-04%20032527.png)
 
-![Analiz Ekranı](Ekran görüntüsü 2026-02-04 032527.png)
+### 3. Yapay Zeka Sinyalleri ve Göstergeler
+![AI Sinyalleri](Ekran%20görüntüsü%202026-02-04%20032543.png)
 
-![Diğer Ekran](Ekran görüntüsü 2026-02-04 032543.png)
-
+### 4. Portföy ve Takip Listesi
+![Portföy](Ekran%20görüntüsü%202026-02-04%20032602.png)
 
 ---
 Developed by **Onur** | 2026
