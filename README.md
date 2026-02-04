@@ -44,6 +44,14 @@ Bu projeyi kendi bilgisayarınızda çalıştırmak için:
 
 ## 📷 Ekran Görüntüleri
 
+## 📷 Ekran Görüntüleri
+
+![Ana Ekran Görünümü](Ekran görüntüsü 2026-02-04 032515.png)
+
+![Analiz Ekranı](Ekran görüntüsü 2026-02-04 032527.png)
+
+![Diğer Ekran](Ekran görüntüsü 2026-02-04 032543.png)
+
 
 ---
 Developed by **Onur** | 2026
