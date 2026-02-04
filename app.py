@@ -12,7 +12,7 @@ import hashlib
 from sklearn.ensemble import RandomForestClassifier
 from streamlit_gsheets import GSheetsConnection
 
-# --- 1. AYARLAR ---
+
 st.set_page_config(
     page_title="Borsa Pro Gold",
     page_icon="💎",
@@ -33,15 +33,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. GOOGLE SHEETS VERİTABANI MOTORU ---
-# Bağlantıyı oluştur
+
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def sifrele(sifre):
     return hashlib.sha256(str.encode(sifre)).hexdigest()
 
 def db_get_users():
-    # users sayfasını oku (ttl=0 anlık veri demektir)
+    
     try:
         return conn.read(worksheet="users", ttl=0)
     except:
@@ -50,7 +49,7 @@ def db_get_users():
 def db_add_user(username, password):
     df = db_get_users()
     if username in df['username'].values:
-        return False # Kullanıcı var
+        return False 
     
     new_data = pd.DataFrame([{"username": username, "password": sifrele(password)}])
     updated_df = pd.concat([df, new_data], ignore_index=True)
@@ -68,7 +67,7 @@ def db_get_takip(username):
 
 def db_add_takip(username, sembol):
     df = conn.read(worksheet="takip", ttl=0)
-    # Zaten varsa ekleme
+    
     if not df[(df['username'] == username) & (df['sembol'] == sembol)].empty:
         return
     
@@ -78,7 +77,7 @@ def db_add_takip(username, sembol):
 
 def db_del_takip(username, sembol):
     df = conn.read(worksheet="takip", ttl=0)
-    # O satırı sil
+    
     updated_df = df[~((df['username'] == username) & (df['sembol'] == sembol))]
     conn.update(worksheet="takip", data=updated_df)
 
@@ -91,15 +90,15 @@ def db_get_portfoy(username):
 
 def db_update_portfoy(username, sembol, adet, maliyet):
     df = conn.read(worksheet="portfoy", ttl=0)
-    # Önce eskisini sil (varsa)
+    
     df = df[~((df['username'] == username) & (df['sembol'] == sembol))]
     
-    # Yenisini ekle
+    
     new_row = pd.DataFrame([{"username": username, "sembol": sembol, "adet": float(adet), "maliyet": float(maliyet)}])
     updated_df = pd.concat([df, new_row], ignore_index=True)
     conn.update(worksheet="portfoy", data=updated_df)
 
-# --- 3. MAİL BOTU ---
+
 def mail_gonder(kime, sembol, fiyat):
     try:
         if "gmail" in st.secrets:
@@ -117,7 +116,7 @@ def mail_gonder(kime, sembol, fiyat):
         server.quit(); return True
     except: return False
 
-# --- 4. DATA VE ANALİZ MOTORU ---
+
 @st.cache_data(ttl=60)
 def veri_getir(sembol, periyot="1mo"):
     try:
@@ -125,7 +124,7 @@ def veri_getir(sembol, periyot="1mo"):
         if periyot == "1d": aralik = "5m"
         elif periyot == "5d": aralik = "60m"
         
-        # ALTIN/GÜMÜŞ FIX
+        
         if "ALTIN" in sembol or "GUMUS" in sembol:
             ticker = "GC=F" if "ALTIN" in sembol else "SI=F"
             ons = yf.Ticker(ticker).history(period=periyot, interval=aralik)
@@ -229,7 +228,7 @@ def ml_sinyal_uret(sembol):
         else: return "DUSUS 🔻", (1 - prob) * 100
     except: return "Hesaplanamadı", 0
 
-# --- 5. GİRİŞ SİSTEMİ ---
+
 if 'login_status' not in st.session_state: st.session_state['login_status'] = False
 if 'username' not in st.session_state: st.session_state['username'] = ''
 
@@ -242,11 +241,11 @@ def login_ekrani():
             k = st.text_input("Kullanıcı Adı")
             s = st.text_input("Şifre", type="password")
             if st.button("Giriş Yap", use_container_width=True):
-                # Google Sheets'ten oku
+                
                 users = db_get_users()
                 hashed_pw = sifrele(s)
                 
-                # Kontrol et
+                
                 if not users.empty and ((users['username'] == k) & (users['password'] == hashed_pw)).any():
                     st.session_state['login_status']=True
                     st.session_state['username']=k
@@ -261,12 +260,12 @@ def login_ekrani():
                     with st.spinner("Google Sheets'e Kaydediliyor..."):
                         basarili = db_add_user(yk, ys)
                         if basarili:
-                            db_add_takip(yk, "ASELS.IS") # Varsayılan hisse
+                            db_add_takip(yk, "ASELS.IS") 
                             st.success("Başarılı! Giriş yapabilirsin.")
                         else:
                             st.warning("Bu kullanıcı adı alınmış.")
 
-# --- 6. ANA EKRAN ---
+
 if not st.session_state['login_status']:
     login_ekrani()
 else:
@@ -278,7 +277,7 @@ else:
         st.rerun()
     st.sidebar.divider()
     
-    # Takip Listesini Getir (Sheets)
+    
     l = db_get_takip(user)
     
     secilen = st.sidebar.selectbox("Hisse Seç", l)
@@ -310,7 +309,7 @@ else:
                 db_del_takip(user, secilen)
             st.rerun()
 
-    # --- MAIN ---
+    
     st.title(f"{secilen.replace('.IS','')} Analiz")
     
     c1,c2 = st.columns([1,3])
@@ -350,7 +349,7 @@ else:
              fig.add_trace(go.Scatter(x=ai_df['Date'], y=ai_df['Tahmin'], line=dict(color='yellow', dash='dot', width=2), name='AI Trend'))
              fig.add_trace(go.Scatter(x=ai_df['Date'], y=ai_df['Alt'], fill='tonexty', fillcolor='rgba(255, 255, 0, 0.15)', line=dict(width=0), name='Güven Aralığı'))
         
-        # ZOOM FIX
+        
         min_y = df['Low'].min() * 0.999
         max_y = df['High'].max() * 1.001
         
@@ -361,7 +360,7 @@ else:
             st.write("Sarı: Trend Rotası, Gri: Bollinger Bantları (Pahalı/Ucuz Sınırı)")
 
         with st.expander("💰 İşlem Yap (Cloud)"):
-            ad = st.number_input("Adet", 100.0); mal = st.number_input("Maliyet", son)
+            ad = st.number_input("Adet", 1.0); mal = st.number_input("Maliyet", son)
             if st.button("Kaydet"):
                 with st.spinner("Google Sheets'e Yazılıyor..."):
                     db_update_portfoy(user, secilen, ad, mal)
@@ -369,7 +368,7 @@ else:
                 time.sleep(1)
                 st.rerun()
 
-        # --- SEKMELER ---
+        
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["🧬 AI & Mevsimsellik", "📊 Risk", "📋 Veri", "🔔 Alarm", "🆚 Kıyasla"])
 
         with tab1: 
@@ -430,3 +429,4 @@ else:
                 else: st.error("Veri yok.")
 
     else: st.error("Veri alınamadı.")
+
